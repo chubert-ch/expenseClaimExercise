@@ -45,6 +45,8 @@ public class SecurityConfig {
                     config.setAllowCredentials(true);
                     return config;
                 }))
+                // Only okay because we both require X-Requested-With on each request and allowCredentials
+                //  is true and CorsConfiguration.validateAllowCredentials() rejects allowedOrigins *
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
