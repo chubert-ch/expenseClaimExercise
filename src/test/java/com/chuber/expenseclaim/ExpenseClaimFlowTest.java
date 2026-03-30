@@ -12,15 +12,13 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 class ExpenseClaimFlowTest {
-
-    private static final String HEADER = "X-Requested-With";
-    private static final String HEADER_VALUE = "XMLHttpRequest";
 
     @Autowired
     MockMvc mockMvc;
@@ -44,7 +42,7 @@ class ExpenseClaimFlowTest {
         // === Employee 1 submits a claim ===
 
         MvcResult e1ClaimResult = mockMvc.perform(post("/api/claims")
-                        .header(HEADER, HEADER_VALUE)
+                        .with(csrf())
                         .session(employee1Session)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -65,7 +63,7 @@ class ExpenseClaimFlowTest {
         // === Employee 2 submits two claims ===
 
         MvcResult e2Claim1Result = mockMvc.perform(post("/api/claims")
-                        .header(HEADER, HEADER_VALUE)
+                        .with(csrf())
                         .session(employee2Session)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -83,7 +81,7 @@ class ExpenseClaimFlowTest {
         String e2Claim1Id = extractId(e2Claim1Result);
 
         mockMvc.perform(post("/api/claims")
-                        .header(HEADER, HEADER_VALUE)
+                        .with(csrf())
                         .session(employee2Session)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -99,7 +97,6 @@ class ExpenseClaimFlowTest {
         // === Employee 1 views their list — should see only their 1 claim ===
 
         mockMvc.perform(get("/api/claims")
-                        .header(HEADER, HEADER_VALUE)
                         .session(employee1Session))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
@@ -108,7 +105,6 @@ class ExpenseClaimFlowTest {
         // === Employee 1 views their specific claim ===
 
         mockMvc.perform(get("/api/claims/" + e1ClaimId)
-                        .header(HEADER, HEADER_VALUE)
                         .session(employee1Session))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.description").value("Train to London"))
@@ -117,7 +113,6 @@ class ExpenseClaimFlowTest {
         // === Approver views all claims — should see all 3 ===
 
         mockMvc.perform(get("/api/claims")
-                        .header(HEADER, HEADER_VALUE)
                         .session(approverSession))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(3)));
@@ -125,7 +120,6 @@ class ExpenseClaimFlowTest {
         // === Approver views employee 1's claim specifically ===
 
         mockMvc.perform(get("/api/claims/" + e1ClaimId)
-                        .header(HEADER, HEADER_VALUE)
                         .session(approverSession))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.employee").value("john.smith"));
@@ -133,7 +127,7 @@ class ExpenseClaimFlowTest {
         // === Approver approves employee 1's claim ===
 
         mockMvc.perform(put("/api/claims/" + e1ClaimId + "/decision")
-                        .header(HEADER, HEADER_VALUE)
+                        .with(csrf())
                         .session(approverSession)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -147,7 +141,7 @@ class ExpenseClaimFlowTest {
         // === Approver tries to reject employee 2's first claim without a reason — 400 ===
 
         mockMvc.perform(put("/api/claims/" + e2Claim1Id + "/decision")
-                        .header(HEADER, HEADER_VALUE)
+                        .with(csrf())
                         .session(approverSession)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -158,7 +152,7 @@ class ExpenseClaimFlowTest {
         // === Approver rejects employee 2's first claim with a reason — succeeds ===
 
         mockMvc.perform(put("/api/claims/" + e2Claim1Id + "/decision")
-                        .header(HEADER, HEADER_VALUE)
+                        .with(csrf())
                         .session(approverSession)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -171,7 +165,7 @@ class ExpenseClaimFlowTest {
         // === Approver tries to reject the same claim again — 422 ===
 
         mockMvc.perform(put("/api/claims/" + e2Claim1Id + "/decision")
-                        .header(HEADER, HEADER_VALUE)
+                        .with(csrf())
                         .session(approverSession)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -182,7 +176,6 @@ class ExpenseClaimFlowTest {
         // === Employee 1 views their list — claim should now be APPROVED ===
 
         mockMvc.perform(get("/api/claims")
-                        .header(HEADER, HEADER_VALUE)
                         .session(employee1Session))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
@@ -192,7 +185,7 @@ class ExpenseClaimFlowTest {
 
     private MockHttpSession login(String username, String password) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/auth/login")
-                        .header(HEADER, HEADER_VALUE)
+                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"username": "%s", "password": "%s"}

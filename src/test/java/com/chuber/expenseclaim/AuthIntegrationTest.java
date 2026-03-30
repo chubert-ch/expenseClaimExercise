@@ -10,15 +10,13 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 class AuthIntegrationTest {
-
-    private static final String REQUESTED_WITH = "X-Requested-With";
-    private static final String XMLHTTP_REQUEST = "XMLHttpRequest";
 
     @Autowired
     MockMvc mockMvc;
@@ -27,7 +25,7 @@ class AuthIntegrationTest {
     void login_thenLogout_succeeds() throws Exception {
         // Login
         MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
-                        .header(REQUESTED_WITH, XMLHTTP_REQUEST)
+                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"username": "john.smith", "password": "Password123!"}
@@ -43,13 +41,13 @@ class AuthIntegrationTest {
         // Logout with the session
         assertNotNull(session);
         mockMvc.perform(post("/api/auth/logout")
-                        .header(REQUESTED_WITH, XMLHTTP_REQUEST)
+                        .with(csrf())
                         .session(session))
                 .andExpect(status().isOk());
 
         // Old session should no longer work
         mockMvc.perform(post("/api/auth/logout")
-                        .header(REQUESTED_WITH, XMLHTTP_REQUEST)
+                        .with(csrf())
                         .session(session))
                 .andExpect(status().isUnauthorized());
     }
@@ -57,7 +55,7 @@ class AuthIntegrationTest {
     @Test
     void login_wrongUsername_returns401() throws Exception {
         mockMvc.perform(post("/api/auth/login")
-                        .header(REQUESTED_WITH, XMLHTTP_REQUEST)
+                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"username": "nobody", "password": "Password123!"}
@@ -68,7 +66,7 @@ class AuthIntegrationTest {
     @Test
     void login_wrongPassword_returns401() throws Exception {
         mockMvc.perform(post("/api/auth/login")
-                        .header(REQUESTED_WITH, XMLHTTP_REQUEST)
+                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"username": "john.smith", "password": "wrong"}
@@ -79,7 +77,7 @@ class AuthIntegrationTest {
     @Test
     void logout_withoutLogin_returns401() throws Exception {
         mockMvc.perform(post("/api/auth/logout")
-                        .header(REQUESTED_WITH, XMLHTTP_REQUEST))
+                        .with(csrf()))
                 .andExpect(status().isUnauthorized());
     }
 }

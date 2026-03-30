@@ -22,6 +22,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -29,9 +30,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @Transactional
 class ExpenseClaimIntegrationTest {
-
-    private static final String HEADER = "X-Requested-With";
-    private static final String HEADER_VALUE = "XMLHttpRequest";
 
     @Autowired
     MockMvc mockMvc;
@@ -81,7 +79,7 @@ class ExpenseClaimIntegrationTest {
         @WithMockUser(username = "john.smith", roles = "EMPLOYEE")
         void validClaim_returns201() throws Exception {
             mockMvc.perform(post("/api/claims")
-                            .header(HEADER, HEADER_VALUE)
+                            .with(csrf())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {
@@ -103,7 +101,7 @@ class ExpenseClaimIntegrationTest {
         @WithMockUser(username = "john.smith", roles = "EMPLOYEE")
         void missingFields_returns400() throws Exception {
             mockMvc.perform(post("/api/claims")
-                            .header(HEADER, HEADER_VALUE)
+                            .with(csrf())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {"description": ""}
@@ -115,7 +113,7 @@ class ExpenseClaimIntegrationTest {
         @WithMockUser(username = "john.smith", roles = "EMPLOYEE")
         void negativeAmount_returns400() throws Exception {
             mockMvc.perform(post("/api/claims")
-                            .header(HEADER, HEADER_VALUE)
+                            .with(csrf())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {
@@ -133,7 +131,7 @@ class ExpenseClaimIntegrationTest {
         void descriptionTooLong_returns400() throws Exception {
             String longDesc = "x".repeat(256);
             mockMvc.perform(post("/api/claims")
-                            .header(HEADER, HEADER_VALUE)
+                            .with(csrf())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {
@@ -150,7 +148,7 @@ class ExpenseClaimIntegrationTest {
         @WithMockUser(username = "mike.approver", roles = "APPROVER")
         void approverSubmitsClaim_returns403() throws Exception {
             mockMvc.perform(post("/api/claims")
-                            .header(HEADER, HEADER_VALUE)
+                            .with(csrf())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {
@@ -170,8 +168,7 @@ class ExpenseClaimIntegrationTest {
         @Test
         @WithMockUser(username = "john.smith", roles = "EMPLOYEE")
         void employeeSeesOnlyOwnClaims() throws Exception {
-            mockMvc.perform(get("/api/claims")
-                            .header(HEADER, HEADER_VALUE))
+            mockMvc.perform(get("/api/claims"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$", hasSize(1)))
                     .andExpect(jsonPath("$[0].employee").value("john.smith"));
@@ -180,8 +177,7 @@ class ExpenseClaimIntegrationTest {
         @Test
         @WithMockUser(username = "mike.approver", roles = "APPROVER")
         void approverSeesAllClaims() throws Exception {
-            mockMvc.perform(get("/api/claims")
-                            .header(HEADER, HEADER_VALUE))
+            mockMvc.perform(get("/api/claims"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$", hasSize(2)));
         }
@@ -193,8 +189,7 @@ class ExpenseClaimIntegrationTest {
         @Test
         @WithMockUser(username = "john.smith", roles = "EMPLOYEE")
         void employeeViewsOwnClaim_returns200() throws Exception {
-            mockMvc.perform(get("/api/claims/" + pendingClaim.getId())
-                            .header(HEADER, HEADER_VALUE))
+            mockMvc.perform(get("/api/claims/" + pendingClaim.getId()))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.description").value("Train ticket"));
         }
@@ -202,24 +197,21 @@ class ExpenseClaimIntegrationTest {
         @Test
         @WithMockUser(username = "john.smith", roles = "EMPLOYEE")
         void employeeViewsOthersClaim_returns403() throws Exception {
-            mockMvc.perform(get("/api/claims/" + approvedClaim.getId())
-                            .header(HEADER, HEADER_VALUE))
+            mockMvc.perform(get("/api/claims/" + approvedClaim.getId()))
                     .andExpect(status().isForbidden());
         }
 
         @Test
         @WithMockUser(username = "mike.approver", roles = "APPROVER")
         void approverViewsAnyClaim_returns200() throws Exception {
-            mockMvc.perform(get("/api/claims/" + pendingClaim.getId())
-                            .header(HEADER, HEADER_VALUE))
+            mockMvc.perform(get("/api/claims/" + pendingClaim.getId()))
                     .andExpect(status().isOk());
         }
 
         @Test
         @WithMockUser(username = "john.smith", roles = "EMPLOYEE")
         void nonExistentClaim_returns404() throws Exception {
-            mockMvc.perform(get("/api/claims/99999")
-                            .header(HEADER, HEADER_VALUE))
+            mockMvc.perform(get("/api/claims/99999"))
                     .andExpect(status().isNotFound());
         }
     }
@@ -231,7 +223,7 @@ class ExpenseClaimIntegrationTest {
         @WithMockUser(username = "mike.approver", roles = "APPROVER")
         void approvePendingClaim_returns200() throws Exception {
             mockMvc.perform(put("/api/claims/" + pendingClaim.getId() + "/decision")
-                            .header(HEADER, HEADER_VALUE)
+                            .with(csrf())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {"status": "APPROVED"}
@@ -246,7 +238,7 @@ class ExpenseClaimIntegrationTest {
         @WithMockUser(username = "mike.approver", roles = "APPROVER")
         void rejectWithReason_returns200() throws Exception {
             mockMvc.perform(put("/api/claims/" + pendingClaim.getId() + "/decision")
-                            .header(HEADER, HEADER_VALUE)
+                            .with(csrf())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {"status": "REJECTED", "rejectionReason": "Missing receipt"}
@@ -260,7 +252,7 @@ class ExpenseClaimIntegrationTest {
         @WithMockUser(username = "mike.approver", roles = "APPROVER")
         void rejectWithoutReason_returns400() throws Exception {
             mockMvc.perform(put("/api/claims/" + pendingClaim.getId() + "/decision")
-                            .header(HEADER, HEADER_VALUE)
+                            .with(csrf())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {"status": "REJECTED"}
@@ -272,7 +264,7 @@ class ExpenseClaimIntegrationTest {
         @WithMockUser(username = "mike.approver", roles = "APPROVER")
         void decideAlreadyDecidedClaim_returns403() throws Exception {
             mockMvc.perform(put("/api/claims/" + approvedClaim.getId() + "/decision")
-                            .header(HEADER, HEADER_VALUE)
+                            .with(csrf())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {"status": "APPROVED"}
@@ -284,7 +276,7 @@ class ExpenseClaimIntegrationTest {
         @WithMockUser(username = "john.smith", roles = "EMPLOYEE")
         void employeeTriesToDecide_returns403() throws Exception {
             mockMvc.perform(put("/api/claims/" + pendingClaim.getId() + "/decision")
-                            .header(HEADER, HEADER_VALUE)
+                            .with(csrf())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {"status": "APPROVED"}
@@ -296,7 +288,7 @@ class ExpenseClaimIntegrationTest {
         @WithMockUser(username = "mike.approver", roles = "APPROVER")
         void decideNonExistentClaim_returns404() throws Exception {
             mockMvc.perform(put("/api/claims/99999/decision")
-                            .header(HEADER, HEADER_VALUE)
+                            .with(csrf())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {"status": "APPROVED"}
@@ -308,7 +300,7 @@ class ExpenseClaimIntegrationTest {
         @WithMockUser(username = "mike.approver", roles = "APPROVER")
         void setPendingViaDecision_returns400() throws Exception {
             mockMvc.perform(put("/api/claims/" + pendingClaim.getId() + "/decision")
-                            .header(HEADER, HEADER_VALUE)
+                            .with(csrf())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {"status": "PENDING"}
