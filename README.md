@@ -105,6 +105,20 @@ Approve or reject a pending claim. **APPROVER only.**
 
 Returns `400` if the decision is invalid, `403` if the claim has already been decided.
 
+## Out of scope
+
+Scaling (e.g. locking support, views and filters for data, pagination)
+
+Extensibility (e.g. current design is bad for adding later support for state changing)
+
+Hardening (e.g. mass credential stuffing attacks, credential timeouts)
+
+Logging and telemetry (e.g. failed login attempts)
+
+Hardcoded values (e.g. db creds, hostname)
+
+## In scope TODOs
 <!-- TODO: verify test setup works on Linux, macOS and anything that isn't WSL2 -->
 <!-- TODO: Testcontainers to avoid need for the docker compose up -->
 <!-- TODO: dedicated audit trail convenience endpoint? -->
+
